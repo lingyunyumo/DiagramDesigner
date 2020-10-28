@@ -1,0 +1,345 @@
+﻿<UserControl x:Class="DiagramDesigner.View.DiagramControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:b="clr-namespace:DiagramDesigner.Behaviors"
+             xmlns:c="clr-namespace:DiagramDesigner.Converters"
+             xmlns:v="clr-namespace:DiagramDesigner.View"
+             xmlns:vm="clr-namespace:DiagramDesigner.ViewModel"
+             xmlns:s="clr-namespace:DiagramDesigner.Selectors" 
+             PreviewKeyDown="UserControl_PreviewKeyDown"
+             mc:Ignorable="d" d:DataContext="{x:Type vm:DiagramViewModel}"
+             d:DesignHeight="450" d:DesignWidth="800">
+    <UserControl.Resources>
+        <DrawingBrush x:Key="GridTile" Stretch="None" TileMode="Tile"
+              Viewport="0,0 20,20" ViewportUnits="Absolute">
+            <!-- ^^^^^^^^^^^ set the size of the tile-->
+            <DrawingBrush.Drawing>
+                <GeometryDrawing>
+                    <GeometryDrawing.Geometry>
+                        <GeometryGroup>
+                            <LineGeometry StartPoint="0,20" EndPoint="20,20" />
+                            <LineGeometry StartPoint="20,0" EndPoint="20,20" />
+                        </GeometryGroup>
+                    </GeometryDrawing.Geometry>
+                    <GeometryDrawing.Pen>
+                        <Pen Thickness="1" Brush="LightGray" />
+                    </GeometryDrawing.Pen>
+                </GeometryDrawing>
+            </DrawingBrush.Drawing>
+        </DrawingBrush>
+    </UserControl.Resources>
+
+    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" IsDeferredScrollingEnabled="True">
+  
+        <Viewbox StretchDirection="Both" Stretch="UniformToFill"  Width="{Binding ViewboxWidth}" Height="{Binding ViewboxHeight}">
+            <Grid Width="{Binding CanvasWidth}" Height="{Binding CanvasHeight}" >
+                
+                <ItemsControl ItemsSource="{Binding Children}" Background="White"
+                      ItemContainerStyleSelector="{x:Static s:DiagramElementStyleSelector.Instance}">
+
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <Canvas x:Name="canvas" FocusManager.IsFocusScope="True"
+                                    RequestBringIntoView="canvas_RequestBringIntoView"
+                                    Background="{StaticResource GridTile}"
+                                    MouseLeftButtonDown="canvas_MouseLeftButtonDown"
+                                    MouseRightButtonDown="canvas_MouseRightButtonDown"
+                                    DragDrop.Drop="canvas_Drop"
+                                    PreviewKeyDown="UserControl_PreviewKeyDown"
+                                    AllowDrop="True">
+                                <Canvas.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem x:Name="miPaste" Header="粘贴部件" Click="miPaste_Click"/>
+                                    </ContextMenu>
+                                </Canvas.ContextMenu>
+                            </Canvas>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+
+                    <ItemsControl.Resources>
+
+                        <Style x:Key="nodeStyle" TargetType="{x:Type ContentPresenter}">
+                            <Setter Property="Canvas.Top" Value="{Binding Top}" />
+                            <Setter Property="Canvas.Left" Value="{Binding Left}" />
+                            <Setter Property="Canvas.ZIndex" Value="999" />
+                            <Setter Property="ContentTemplate">
+                                <Setter.Value>
+                                    <DataTemplate DataType="{x:Type vm:NodeViewModel}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition/>
+                                                <ColumnDefinition Width="200"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{Binding Data.Name}" Grid.ColumnSpan="2"
+                                               FontSize="10"
+                                               Foreground="Gray"
+                                               Margin="0,0,0,-14"
+                                               TextAlignment="Left" 
+                                               HorizontalAlignment="Left"
+                                               VerticalAlignment="Bottom"/>
+
+                                            <TextBlock x:Name="tbNodeKeyValues" 
+                                                       Text="{Binding Data.Overview}" 
+                                                       Background="LightYellow"
+                                                       Visibility="Collapsed"
+                                                       FontSize="10"
+                                                       Foreground="Black"
+                                                       Margin="0,0,0,-28"
+                                                       TextAlignment="Left" 
+                                                       HorizontalAlignment="Left"
+                                                       VerticalAlignment="Bottom"/>
+
+                                            <Thumb x:Name="nodeThumb" Focusable="True"
+                                                   DragDelta="nodeThumb_DragDelta"
+                                                   PreviewMouseRightButtonDown="nodeThumb_PreviewMouseRightButtonDown"
+                                                   PreviewMouseLeftButtonDown="nodeThumb_PreviewMouseLeftButtonDown"
+                                                   Width="{Binding Width}" 
+                                                   Height="{Binding Height}"
+                                                   Cursor="SizeAll">
+                                                <Thumb.ContextMenu>
+                                                    <ContextMenu>
+                                                        <MenuItem x:Name="miRotateClockwise" Header="顺时针旋转90°" Click="miRotateClockwise_Click">
+                                                            <!--<MenuItem.Icon>
+                                                                <Image Width="24" Height="24" Source="/DiagramDesigner;component/Resources/baseline_rotate_right_black_48dp.png"/>
+                                                            </MenuItem.Icon>-->
+                                                        </MenuItem>
+                                                        <MenuItem x:Name="miRotateCounterClockwise" Header="逆时针旋转90°" Click="miRotateCounterClockwise_Click" />
+                                                        <MenuItem x:Name="miMirrorHorizontally" Header="水平翻转" Click="miMirrorHorizontally_Click" />
+                                                        <MenuItem x:Name="miMirrorVertically" Header="垂直翻转" Click="miMirrorVertically_Click" />
+                                                        <Separator/>
+                                                        <!--<MenuItem x:Name="miAddPort" Header="添加输入输出节点" Click="miAddPort_Click"/>-->
+                                                        <MenuItem x:Name="miCopy" Header="复制部件" Click="miCopy_Click"/>
+                                                        <MenuItem x:Name="miRemove" Header="删除部件" Click="miRemove_Click"/>
+                                                        <Separator/>
+                                                        <!--<MenuItem x:Name="miAddToLibrary" Header="添加到部件库" Click="miAddToLibrary_Click"/>
+                                                        <Separator/>-->
+                                                        <MenuItem x:Name="miMore" Header="更多..." Click="miMore_Click"/>
+                                                    </ContextMenu>
+                                                </Thumb.ContextMenu>
+                                                <Thumb.Template>
+                                                    <ControlTemplate>
+                                                        <Grid>
+                                                            <Rectangle x:Name="r" Stroke="Gray" Fill="White"
+                                                                       StrokeThickness="1" RadiusX="4" RadiusY="4"
+                                                                       IsHitTestVisible="True"/>
+                                                            <Image Source="{Binding ImagePath}"
+                                                                   Margin="5"
+                                                                   VerticalAlignment="Top"
+                                                                   HorizontalAlignment="Left" Stretch="Fill" 
+                                                                   RenderTransformOrigin="0.5,0.5">
+                                                                <Image.LayoutTransform>
+                                                                    <RotateTransform Angle="{Binding ImageRotation}"/>
+                                                                </Image.LayoutTransform>
+                                                            </Image>
+                                                        </Grid>
+                                                        <ControlTemplate.Triggers>
+                                                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                                <Setter TargetName="r" Property="StrokeThickness" Value="2"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding Disabled}" Value="True">
+                                                                <Setter TargetName="r" Property="Fill" Value="LightGray"/>
+                                                            </DataTrigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Thumb.Template>
+                                            </Thumb>
+
+                                            <Thumb x:Name="resizeThumb" Visibility="Collapsed"
+                                            Width="7" Height="7" Cursor="SizeNWSE" Margin="0 0 -2 -2"
+                                            VerticalAlignment="Bottom" HorizontalAlignment="Right"
+                                            DragDelta="resizeThumb_DragDelta">
+                                                <Thumb.Template>
+                                                    <ControlTemplate>
+                                                        <Rectangle Fill="White" Stroke="Black" StrokeThickness="1"/>
+                                                    </ControlTemplate>
+                                                </Thumb.Template>
+                                            </Thumb>
+
+                                            <ItemsControl ItemsSource="{Binding Children}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <Canvas Background="{x:Null}"/>
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemContainerStyle>
+                                                    <Style TargetType="{x:Type ContentPresenter}">
+                                                        <Setter Property="Canvas.ZIndex" Value="999"/>
+                                                        <Setter Property="Canvas.Top" Value="{Binding Top}" />
+                                                        <Setter Property="Canvas.Left" Value="{Binding Left}" />
+                                                        <Setter Property="ContentTemplate">
+                                                            <Setter.Value>
+                                                                <DataTemplate DataType="{x:Type vm:PortViewModel}">
+                                                                    <Grid>
+                                                                        <Grid.RenderTransform>
+                                                                            <TranslateTransform X="-5" Y="-5" />
+                                                                        </Grid.RenderTransform>
+                                                                        <Thumb x:Name="portThumb"
+                                                                       PreviewMouseLeftButtonDown="portThumb_PreviewMouseLeftButtonDown"
+                                                                       PreviewMouseLeftButtonUp="portThumb_PreviewMouseLeftButtonUp"
+                                                                       DragDelta="portThumb_DragDelta" 
+                                                                       Width="{Binding Width}" 
+                                                                       Height="{Binding Height}"
+                                                                       Cursor="Cross">
+                                                                            <!--<Thumb.ContextMenu>
+                                                                                <ContextMenu>
+                                                                                    <MenuItem x:Name="miRemove" Header="删除输入输出节点" Click="miRemove_Click"/>
+                                                                                </ContextMenu>
+                                                                            </Thumb.ContextMenu>-->
+                                                                            <Thumb.Template>
+                                                                                <ControlTemplate>
+                                                                                    <Ellipse Margin="-5" Fill="Transparent"/>
+                                                                                </ControlTemplate>
+                                                                            </Thumb.Template>
+                                                                        </Thumb>
+
+                                                                        <Rectangle x:Name="r" Stroke="LightGray" StrokeThickness="1"
+                                                                         Width="{Binding Width}" 
+                                                                         Height="{Binding Height}"
+                                                                         Fill="{Binding Color, Converter={x:Static c:ColorToBrushConverter.Instance}}"
+                                                                         IsHitTestVisible="False">
+                                                                        </Rectangle>
+
+                                                                        <Ellipse x:Name="e" Stroke="LightGray" StrokeThickness="1"
+                                                                         Width="{Binding Width}" 
+                                                                         Height="{Binding Height}"
+                                                                         Fill="{Binding Color, Converter={x:Static c:ColorToBrushConverter.Instance}}"
+                                                                         IsHitTestVisible="False">
+                                                                        </Ellipse>
+
+                                                                    </Grid>
+
+                                                                    <DataTemplate.Triggers>
+                                                                        <Trigger SourceName="portThumb" Property="IsMouseOver" Value="True">
+                                                                            <Setter TargetName="e" Property="StrokeThickness" Value="2"/>
+                                                                        </Trigger>
+                                                                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                                            <Setter TargetName="r" Property="StrokeThickness" Value="2"/>
+                                                                            <Setter TargetName="e" Property="StrokeThickness" Value="2"/>
+                                                                            <Setter TargetName="r" Property="Stroke" Value="Gray"/>
+                                                                            <Setter TargetName="e" Property="Stroke" Value="Gray"/>
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding Disabled}" Value="True">
+                                                                            <Setter TargetName="r" Property="Fill" Value="LightGray"/>
+                                                                            <Setter TargetName="e" Property="Fill" Value="LightGray"/>
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding Direction}" Value="Inlet">
+                                                                            <Setter TargetName="r" Property="Visibility" Value="Visible"/>
+                                                                            <Setter TargetName="e" Property="Visibility" Value="Collapsed"/>
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding Direction}" Value="Outlet">
+                                                                            <Setter TargetName="e" Property="Visibility" Value="Visible"/>
+                                                                            <Setter TargetName="r" Property="Visibility" Value="Collapsed"/>
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding IsLinked}" Value="True">
+                                                                            <Setter TargetName="portThumb" Property="IsEnabled" Value="False"/>
+                                                                            <Setter TargetName="r" Property="Fill" Value="White"/>
+                                                                            <Setter TargetName="e" Property="Fill" Value="White"/>
+                                                                            <Setter TargetName="r" Property="Width" Value="6"/>
+                                                                            <Setter TargetName="e" Property="Width" Value="6"/>
+                                                                            <Setter TargetName="r" Property="Height" Value="6"/>
+                                                                            <Setter TargetName="e" Property="Height" Value="6"/>
+                                                                        </DataTrigger>
+                                                                    </DataTemplate.Triggers>
+                                                                </DataTemplate>
+                                                            </Setter.Value>
+                                                        </Setter>
+                                                    </Style>
+                                                </ItemsControl.ItemContainerStyle>
+                                            </ItemsControl>
+
+                                        </Grid>
+
+
+                                        <DataTemplate.Triggers>
+                                            <DataTrigger Binding="{Binding IsSelected}" Value="true">
+                                                <Setter TargetName="resizeThumb" Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding DataContext.ShowKeyValuesOnDiagram, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=Canvas}}" Value="True">
+                                                <Setter TargetName="tbNodeKeyValues" Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </DataTemplate.Triggers>
+
+                                    </DataTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+
+                        <Style x:Key="linkStyle" TargetType="{x:Type ContentPresenter}">
+                            
+                            <Setter Property="Canvas.Top" Value="0" />
+                            <Setter Property="Canvas.Left" Value="0" />
+                            <Setter Property="ContentTemplate">
+                                <Setter.Value>
+                                    <DataTemplate DataType="{x:Type vm:LinkViewModel}">
+                                        <Grid>
+                                            <Grid.ContextMenu>
+                                                <ContextMenu>
+                                                    <MenuItem x:Name="miRemove" Header="删除连线" Click="miRemove_Click"/>
+                                                </ContextMenu>
+                                            </Grid.ContextMenu>
+                                            <Polyline x:Name="lineDisplay" StrokeThickness="2" 
+                                              Stroke="{Binding Color, Converter={x:Static c:ColorToBrushConverter.Instance}}"
+                                              Points="{Binding PathPoints, Mode=OneWay, Converter={x:Static c:PointCollectionConverter.Instance}}">
+                                            </Polyline>
+                                            <Polygon x:Name="lineArrow" StrokeThickness="2" 
+                                             Stroke="{Binding Color, Converter={x:Static c:ColorToBrushConverter.Instance}}"
+                                             Fill="{Binding Color, Converter={x:Static c:ColorToBrushConverter.Instance}}"
+                                             Points="{Binding PathPoints, Mode=OneWay, Converter={x:Static c:ArrowPointCollectionConverter.Instance}}">
+                                            </Polygon>
+                                            <Polyline x:Name="line" Focusable="True"
+                                              PreviewMouseLeftButtonDown="line_PreviewMouseLeftButtonDown"
+                                                      PreviewKeyDown="UserControl_PreviewKeyDown"
+                                              StrokeThickness="10" Stroke="Transparent"
+                                              Points="{Binding PathPoints, Mode=OneWay, Converter={x:Static c:PointCollectionConverter.Instance}}">
+                                            </Polyline>
+
+                                            <StackPanel x:Name="spLinkKeyValues" Background="LightYellow" Opacity="0.8"
+                                                        Visibility="Collapsed"
+                                                        IsHitTestVisible="False"
+                                                        VerticalAlignment="Top" HorizontalAlignment="Left"
+                                                        Margin="{Binding PathPoints, Mode=OneWay, Converter={x:Static c:PathPointsMarginConverter.Instance}}">
+                                                <TextBlock Text="{Binding Data.Overview}"
+                                                           FontSize="10"
+                                                           Foreground="Black"
+                                                           TextAlignment="Left" 
+                                                           HorizontalAlignment="Left"
+                                                           VerticalAlignment="Bottom"/>
+
+                                            </StackPanel>
+
+                                        </Grid>
+                                        <DataTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="lineDisplay" Property="StrokeThickness" Value="4"/>
+                                            </Trigger>
+                                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                <Setter TargetName="lineDisplay" Property="StrokeThickness" Value="4"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Disabled}" Value="True">
+                                                <Setter TargetName="lineDisplay" Property="Stroke" Value="LightGray"/>
+                                                <Setter TargetName="lineArrow" Property="Stroke" Value="LightGray"/>
+                                                <Setter TargetName="lineArrow" Property="Fill" Value="LightGray"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding DataContext.ShowKeyValuesOnDiagram, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=Canvas}}" Value="True">
+                                                <Setter TargetName="spLinkKeyValues" Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </DataTemplate.Triggers>
+                                    </DataTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+
+                    </ItemsControl.Resources>
+
+                </ItemsControl>
+
+            </Grid>
+        </Viewbox>
+
+    </ScrollViewer>
+    
+
+    
+</UserControl>
